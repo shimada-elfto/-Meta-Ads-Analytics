@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Ads Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3e;
+    --accent: #4f6ef7;
+    --accent2: #a855f7;
+    --accent3: #06d6a0;
+    --accent4: #ff6b6b;
+    --accent5: #ffd166;
+    --text: #e8e8f0;
+    --text-dim: #6b6b8a;
+    --text-mid: #9999b8;
+    --font-sans: 'DM Sans', 'Noto Sans JP', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.25;
+  }
+
+  header {
+    padding: 20px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+  }
+  .logo-text { font-weight: 700; font-size: 17px; }
+  .logo-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .btn-primary {
+    padding: 8px 18px; background: var(--accent);
+    border: none; border-radius: 6px; color: white;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary:hover { background: #6b84ff; transform: translateY(-1px); }
+  .btn-ghost {
+    padding: 8px 18px; background: transparent;
+    border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-mid); font-family: var(--font-sans);
+    font-size: 13px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  #file-input { display: none; }
+
+  main { padding: 32px 40px; max-width: 1500px; margin: 0 auto; }
+
+  #upload-zone {
+    border: 2px dashed var(--border); border-radius: 16px;
+    padding: 72px 40px; text-align: center;
+    transition: all 0.3s; cursor: pointer; margin-bottom: 32px;
+  }
+  #upload-zone:hover, #upload-zone.dragover {
+    border-color: var(--accent); background: rgba(79,110,247,0.05);
+  }
+  #upload-zone .icon { font-size: 44px; margin-bottom: 16px; }
+  #upload-zone h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  #upload-zone p { color: var(--text-dim); font-size: 14px; }
+  .format-hint {
+    margin-top: 16px; font-size: 12px; color: var(--text-dim);
+    background: var(--surface2); display: inline-block;
+    padding: 6px 16px; border-radius: 20px;
+  }
+
+  #dashboard { display: none; }
+  #dashboard.visible { display: block; animation: fadeUp 0.45s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .section-title { font-weight: 700; font-size: 15px; }
+  .section-tag {
+    font-size: 11px; color: var(--accent);
+    background: rgba(79,110,247,0.12);
+    border: 1px solid rgba(79,110,247,0.3);
+    padding: 2px 10px; border-radius: 20px;
+  }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 14px; margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px;
+    position: relative; overflow: hidden; transition: transform 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .kpi-card.c0::before { background: var(--accent); }
+  .kpi-card.c1::before { background: var(--accent2); }
+  .kpi-card.c2::before { background: var(--accent3); }
+  .kpi-card.c3::before { background: var(--accent5); }
+  .kpi-card.c4::before { background: var(--accent4); }
+  .kpi-card.c5::before { background: #38bdf8; }
+  .kpi-label { font-size: 11px; color: var(--text-dim); font-weight: 500; margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-mono); font-size: 23px; font-weight: 500; letter-spacing: -0.5px; }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .filter-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .tag {
+    padding: 5px 14px; border-radius: 20px; font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+    border: 1px solid var(--border); color: var(--text-mid);
+    font-family: var(--font-sans);
+  }
+  .tag.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .tag:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+  .metric-tabs {
+    display: flex; gap: 4px; margin-bottom: 18px;
+    background: var(--surface2); padding: 4px; border-radius: 8px;
+    width: fit-content; flex-wrap: wrap;
+  }
+  .metric-tab {
+    padding: 6px 15px; font-size: 13px; border-radius: 6px;
+    cursor: pointer; transition: all 0.2s; color: var(--text-dim);
+    font-family: var(--font-sans);
+  }
+  .metric-tab.active { background: var(--surface); color: var(--text); }
+
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 32px; }
+  @media (max-width: 900px) { .chart-grid-2 { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px;
+  }
+  .chart-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .chart-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 18px; }
+  .chart-wrap { position: relative; height: 280px; }
+  .chart-wrap.tall { height: 340px; }
+
+  .table-wrap {
+    overflow-x: auto; border-radius: 12px;
+    border: 1px solid var(--border); margin-bottom: 32px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: var(--font-sans); }
+  thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  th {
+    padding: 11px 16px; text-align: left; font-size: 11px;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px;
+    white-space: nowrap; user-select: none;
+  }
+  td {
+    padding: 10px 16px; border-bottom: 1px solid rgba(42,42,62,0.5);
+    color: var(--text-mid); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79,110,247,0.04); }
+  td.t-name { color: var(--text); font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  td.t-num { font-family: var(--font-mono); font-size: 13px; }
+
+  .plat-badge {
+    display: inline-block; padding: 2px 9px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .plat-facebook         { background: rgba(24,119,242,0.18); color: #5b9ef7; }
+  .plat-instagram        { background: rgba(228,64,95,0.18);  color: #f77faa; }
+  .plat-threads          { background: rgba(180,180,180,0.18); color: #c8c8c8; }
+  .plat-audience_network { background: rgba(6,214,160,0.18); color: #06d6a0; }
+
+  #error-banner {
+    display: none; background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.4);
+    color: #ff6b6b; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* HEATMAP */
+  .heatmap-wrap { font-size: 11px; }
+  .heatmap-row { display: flex; align-items: center; gap: 3px; margin-bottom: 3px; }
+  .heatmap-label-col { width: 60px; text-align: right; padding-right: 8px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+  .heatmap-cell {
+    flex: 1; height: 38px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.9);
+    cursor: default; transition: transform 0.15s; min-width: 60px;
+  }
+  .heatmap-cell:hover { transform: scale(1.06); z-index: 5; position: relative; }
+  .heatmap-cell.empty { background: var(--surface2) !important; color: var(--text-dim); }
+  .heatmap-header { display: flex; gap: 3px; margin-bottom: 4px; padding-left: 68px; }
+  .heatmap-header-cell { flex: 1; text-align: center; font-size: 11px; color: var(--text-dim); min-width: 60px; }
+  .heatmap-legend { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--text-dim); }
+  .heatmap-legend-bar { flex: 1; height: 6px; border-radius: 3px; }
+
+  /* GENDER BADGE */
+  .gender-badge {
+    display: inline-block; padding: 2px 9px; border-radius: 10px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .gender-male   { background: rgba(79,110,247,0.18); color: #7a99f9; }
+  .gender-female { background: rgba(228,64,150,0.18); color: #f77fc0; }
+  .gender-unknown { background: rgba(160,160,160,0.18); color: #c8c8c8; }
+
+  /* TOTAL ROW */
+  tr.total-row td {
+    border-top: 1px solid var(--border);
+    background: rgba(79,110,247,0.07);
+    color: var(--text);
+    font-weight: 600;
+  }
+  tr.total-row td.t-num { color: var(--text); }
+
+  /* DUAL UPLOAD */
+  .dual-upload { display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  @media (max-width: 700px) { .dual-upload { grid-template-columns: 1fr; } }
+  .upload-slot {
+    border: 2px dashed var(--border); border-radius: 14px;
+    padding: 32px 24px; text-align: center; cursor: pointer; transition: all 0.25s;
+  }
+  .upload-slot:hover, .upload-slot.dragover { border-color: var(--accent); background: rgba(79,110,247,0.05); }
+  .upload-slot.loaded { border-color: var(--accent3); border-style: solid; background: rgba(6,214,160,0.05); }
+  .upload-slot .slot-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-slot h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .upload-slot p { font-size: 12px; color: var(--text-dim); }
+  .upload-slot .slot-badge {
+    display: inline-block; margin-top: 10px; padding: 4px 14px;
+    border-radius: 20px; font-size: 11px;
+  }
+  .slot-badge.ready { background: rgba(6,214,160,0.15); color: var(--accent3); border: 1px solid rgba(6,214,160,0.3); }
+  .slot-badge.waiting { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* CROSS SECTION */
+  .cross-section { display: none; }
+  .cross-section.visible { display: block; }
+  .info-note {
+    background: rgba(79,110,247,0.08); border: 1px solid rgba(79,110,247,0.25);
+    border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--text-mid);
+    margin-bottom: 20px; line-height: 1.6;
+  }
+  .info-note strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">M</div>
+    <div>
+      <div class="logo-text">Meta Ads Analytics</div>
+      <div class="logo-sub">Daily Report Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-ghost" onclick="loadSample()">サンプルデータ</button>
+    <button class="btn-ghost" onclick="loadSampleCross()" id="btn-sample-cross">掛け合わせサンプル</button>
+    <button class="btn-primary" onclick="document.getElementById('file-input').click()">📂 CSVアップロード</button>
+    <input type="file" id="file-input" accept=".csv" onchange="handleFile(event)">
+  </div>
+</header>
+
+<main>
+  <div id="error-banner"></div>
+
+  <!-- SINGLE UPLOAD (通常モード) -->
+  <div id="upload-zone"
+    onclick="document.getElementById('file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('dragover')"
+    ondragleave="this.classList.remove('dragover')"
+    ondrop="handleDrop(event)">
+    <div class="icon">📊</div>
+    <h2>Meta広告レポートをアップロード</h2>
+    <p>CSVファイルをドラッグ＆ドロップ、またはクリックして選択</p>
+    <div class="format-hint">単一CSVまたは下の2枚アップロードで掛け合わせ分析も可能</div>
+  </div>
+
+  <!-- DUAL UPLOAD (掛け合わせモード) -->
+  <div class="dual-upload" id="dual-upload-zone">
+    <div class="upload-slot" id="slot-plat"
+      onclick="document.getElementById('file-plat').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleSlotDrop(event,'plat')">
+      <div class="slot-icon">🌐</div>
+      <h3>① プラットフォーム別CSV</h3>
+      <p>プラットフォームで分類したレポート</p>
+      <div class="slot-badge waiting" id="badge-plat">未アップロード</div>
+    </div>
+    <div class="upload-slot" id="slot-demo"
+      onclick="document.getElementById('file-demo').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleSlotDrop(event,'demo')">
+      <div class="slot-icon">👥</div>
+      <h3>② 年代・性別別CSV</h3>
+      <p>年代・性別で分類したレポート</p>
+      <div class="slot-badge waiting" id="badge-demo">未アップロード</div>
+    </div>
+    <input type="file" id="file-plat" accept=".csv" style="display:none" onchange="handleSlotFile(event,'plat')">
+    <input type="file" id="file-demo" accept=".csv" style="display:none" onchange="handleSlotFile(event,'demo')">
+  </div>
+  <div style="text-align:center;margin-bottom:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <button class="btn-primary" id="btn-cross-analyze" onclick="runCrossAnalysis()" style="display:none;">
+      🔗 掛け合わせ分析を実行
+    </button>
+    <button class="btn-ghost" onclick="toggleUploadMode()" id="btn-toggle-mode" style="font-size:12px;">
+      2枚アップロードで掛け合わせ分析 →
+    </button>
+  </div>
+
+  <div id="dashboard">
+
+    <!-- KPI -->
+    <div class="section-header">
+      <span class="section-title">サマリー</span>
+      <span class="section-tag">Overview</span>
+      <span id="date-range" style="font-size:12px;color:var(--text-dim);margin-left:auto;font-family:var(--font-mono);"></span>
+    </div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <hr class="divider">
+
+    <!-- DAILY TREND -->
+    <div class="section-header">
+      <span class="section-title">デイリートレンド</span>
+      <span class="section-tag">Daily Trend</span>
+    </div>
+
+    <div class="filter-label">キャンペーン</div>
+    <div class="filter-row" id="camp-filter"></div>
+    <div id="sub-filter-wrap">
+      <!-- プラットフォームまたは年代・性別フィルターが動的に入る -->
+    </div>
+
+    <div class="metric-tabs" id="metric-tabs">
+      <div class="metric-tab active" data-m="impressions">インプレッション</div>
+      <div class="metric-tab" data-m="clicks">クリック</div>
+      <div class="metric-tab" data-m="spend">消化金額</div>
+      <div class="metric-tab" data-m="ctr">CTR</div>
+      <div class="metric-tab" data-m="cpc">CPC</div>
+      <div class="metric-tab" data-m="cpm">CPM</div>
+      <div class="metric-tab" data-m="reach">リーチ</div>
+      <div class="metric-tab" data-m="conversions">CV数</div>
+      <div class="metric-tab" data-m="cpa">CPA</div>
+      <div class="metric-tab" data-m="cvr">CVR</div>
+    </div>
+
+    <div class="chart-card" style="margin-bottom:32px;">
+      <div class="chart-title" id="daily-chart-title">デイリー インプレッション推移</div>
+      <div class="chart-sub">キャンペーン別の日別変化（プラットフォーム合算）</div>
+      <div class="chart-wrap tall"><canvas id="daily-chart"></canvas></div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- BREAKDOWN SECTION (platform or demo — rendered by JS) -->
+    <div class="section-header">
+      <span class="section-title" id="breakdown-section-title">プラットフォーム別分析</span>
+      <span class="section-tag" id="breakdown-section-tag">Platform</span>
+    </div>
+    <div class="chart-grid-2" id="breakdown-chart-grid">
+      <div class="chart-card">
+        <div class="chart-title" id="breakdown-chart1-title">消化金額シェア</div>
+        <div class="chart-sub" id="breakdown-chart1-sub">プラットフォーム別の消化比率</div>
+        <div class="chart-wrap"><canvas id="breakdown-spend-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title" id="breakdown-chart2-title">CTR / CPC 比較</div>
+        <div class="chart-sub" id="breakdown-chart2-sub">プラットフォーム別の効率指標</div>
+        <div class="chart-wrap"><canvas id="breakdown-metrics-chart"></canvas></div>
+      </div>
+      <!-- demo mode only -->
+      <div class="chart-card" id="demo-heatmap-card" style="display:none;">
+        <div class="chart-title">年代 × 性別 ヒートマップ (CTR)</div>
+        <div class="chart-sub">クリック率の高いセグメントを可視化</div>
+        <div id="heatmap-ctr-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="demo-cvr-card" style="display:none;">
+        <div class="chart-title">年代 × 性別 ヒートマップ (CVR)</div>
+        <div class="chart-sub">CV率（CV数 ÷ クリック数）の分布</div>
+        <div id="heatmap-cvr-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="demo-cpa-card" style="display:none;">
+        <div class="chart-title">年代 × 性別 ヒートマップ (CPA)</div>
+        <div class="chart-sub">コンバージョン単価の分布</div>
+        <div id="heatmap-cpa-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="demo-cpc-card" style="display:none;">
+        <div class="chart-title">年代 × 性別 ヒートマップ (CPC)</div>
+        <div class="chart-sub">クリック単価の分布</div>
+        <div id="heatmap-cpc-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="demo-cpm-card" style="display:none;">
+        <div class="chart-title">年代 × 性別 ヒートマップ (CPM)</div>
+        <div class="chart-sub">1,000インプレッション単価の分布</div>
+        <div id="heatmap-cpm-container" style="overflow-x:auto;"></div>
+      </div>
+      <!-- platform mode only -->
+      <div class="chart-card" id="plat-heatmap-ctr-card" style="display:none;">
+        <div class="chart-title">キャンペーン × プラットフォーム ヒートマップ (CTR)</div>
+        <div class="chart-sub">クリック率の高い組み合わせを可視化</div>
+        <div id="plat-heatmap-ctr-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="plat-heatmap-cvr-card" style="display:none;">
+        <div class="chart-title">キャンペーン × プラットフォーム ヒートマップ (CVR)</div>
+        <div class="chart-sub">CV率（CV数 ÷ クリック数）の分布</div>
+        <div id="plat-heatmap-cvr-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="plat-heatmap-cpa-card" style="display:none;">
+        <div class="chart-title">キャンペーン × プラットフォーム ヒートマップ (CPA)</div>
+        <div class="chart-sub">コンバージョン単価の分布</div>
+        <div id="plat-heatmap-cpa-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="plat-heatmap-cpc-card" style="display:none;">
+        <div class="chart-title">キャンペーン × プラットフォーム ヒートマップ (CPC)</div>
+        <div class="chart-sub">クリック単価の分布</div>
+        <div id="plat-heatmap-cpc-container" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card" id="plat-heatmap-cpm-card" style="display:none;">
+        <div class="chart-title">キャンペーン × プラットフォーム ヒートマップ (CPM)</div>
+        <div class="chart-sub">1,000インプレッション単価の分布</div>
+        <div id="plat-heatmap-cpm-container" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- DETAIL TABLE -->
+    <div class="section-header">
+      <span class="section-title" id="detail-table-title">キャンペーン × プラットフォーム 詳細</span>
+      <span class="section-tag">Detail</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead id="detail-thead"><tr>
+          <th>キャンペーン名</th><th>プラットフォーム</th>
+          <th>インプレッション</th><th>クリック</th><th>CTR</th>
+          <th>消化金額</th><th>CV数</th><th>CPA</th><th>CPC</th><th>CPM</th><th>リーチ</th>
+        </tr></thead>
+        <tbody id="detail-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- DAILY TABLE -->
+    <div class="section-header">
+      <span class="section-title">日別サマリー</span>
+      <span class="section-tag">Daily Table</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>日付</th><th>インプレッション</th><th>クリック</th><th>CTR</th>
+          <th>消化金額</th><th>CV数</th><th>CPA</th><th>CPC</th><th>CPM</th><th>リーチ</th>
+        </tr></thead>
+        <tbody id="daily-tbody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /dashboard -->
+
+  <!-- ─── 掛け合わせ分析セクション ─── -->
+  <div id="cross-section" class="cross-section">
+    <hr class="divider">
+    <div class="section-header">
+      <span class="section-title">プラットフォーム × 年代・性別 掛け合わせ分析</span>
+      <span class="section-tag" style="background:rgba(6,214,160,0.12);color:var(--accent3);border-color:rgba(6,214,160,0.3);">推計値</span>
+    </div>
+    <div class="info-note">
+      ⚠️ <strong>推計値について：</strong>MetaはプラットフォームとデモグラフィックのCSVを同時に出力できないため、「日付×キャンペーン」単位のプラットフォーム構成比を年代・性別データへ按分した<strong>近似値</strong>です。実際の配信データとは差異が生じます。
+    </div>
+
+    <div class="filter-label">キャンペーン（掛け合わせ）</div>
+    <div class="filter-row" id="cross-camp-filter"></div>
+    <div class="filter-label" style="margin-top:8px;">プラットフォーム</div>
+    <div class="filter-row" id="cross-plat-filter"></div>
+    <div class="filter-label" style="margin-top:8px;">年代</div>
+    <div class="filter-row" id="cross-age-filter"></div>
+    <div class="filter-label" style="margin-top:8px;">性別</div>
+    <div class="filter-row" id="cross-gender-filter"></div>
+
+    <div class="chart-grid-2" style="margin-top:20px;">
+      <div class="chart-card">
+        <div class="chart-title">プラットフォーム × 年代 (CTR推計)</div>
+        <div class="chart-sub">クリック率の推計分布</div>
+        <div id="cross-hm-ctr" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">プラットフォーム × 年代 (CVR推計)</div>
+        <div class="chart-sub">CV率の推計分布</div>
+        <div id="cross-hm-cvr" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">プラットフォーム × 年代 (CPA推計)</div>
+        <div class="chart-sub">コンバージョン単価の推計分布</div>
+        <div id="cross-hm-cpa" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">プラットフォーム × 年代 (CPC推計)</div>
+        <div class="chart-sub">クリック単価の推計分布</div>
+        <div id="cross-hm-cpc" style="overflow-x:auto;"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">プラットフォーム × 年代 (CPM推計)</div>
+        <div class="chart-sub">1,000imp単価の推計分布</div>
+        <div id="cross-hm-cpm" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-top:24px;">
+      <span class="section-title">プラットフォーム × 年代 × 性別 詳細（推計）</span>
+      <span class="section-tag">Cross Table</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>プラットフォーム</th><th>年代</th><th>性別</th>
+          <th>IMP(推計)</th><th>クリック(推計)</th><th>CTR</th>
+          <th>消化金額(推計)</th><th>CV(推計)</th><th>CPA</th><th>CPC</th><th>CPM</th>
+        </tr></thead>
+        <tbody id="cross-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── STATE ────────────────────────────────
+let allRows = [];
+let activeCamps = new Set();
+let activePlats = new Set();
+let activeAges = new Set();
+let activeGenders = new Set();
+let activeMetric = 'impressions';
+let charts = {};
+let dataMode = 'platform'; // 'platform' | 'demo' | 'cross'
+
+// 掛け合わせモード用
+let platRows  = null; // プラットフォームCSVの行
+let demoRows  = null; // 年代・性別CSVの行
+let crossRows = [];   // 按分後の掛け合わせ行
+let crossActiveCamps   = new Set();
+let crossActivePlats   = new Set();
+let crossActiveAges    = new Set();
+let crossActiveGenders = new Set();
+let uploadModeVisible  = false;
+
+const COLORS = ['#4f6ef7','#a855f7','#06d6a0','#ff6b6b','#ffd166','#38bdf8','#fb923c','#e879f9'];
+const METRIC_LABELS = {
+  impressions:'インプレッション', clicks:'クリック数', spend:'消化金額 (¥)',
+  ctr:'CTR (%)', cpc:'CPC (¥)', cpm:'CPM (¥)', reach:'リーチ',
+  conversions:'CV数', cpa:'CPA (¥)', cvr:'CVR (%)'
+};
+
+// ─── FILE ─────────────────────────────────
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (f) readCSV(f);
+  e.target.value = '';
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) readCSV(f);
+}
+function readCSV(file, cb) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      if (cb) { cb(rows); return; }
+      if (!rows.length) { showError('データが読み込めませんでした。'); return; }
+      allRows = rows;
+      hideError();
+      buildDashboard();
+    } catch(err) { showError('エラー: ' + err.message); }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ─── DUAL UPLOAD ──────────────────────────
+function toggleUploadMode() {
+  uploadModeVisible = !uploadModeVisible;
+  const dz  = document.getElementById('dual-upload-zone');
+  const btn = document.getElementById('btn-toggle-mode');
+  const uz  = document.getElementById('upload-zone');
+  if (uploadModeVisible) {
+    dz.style.display = 'grid';
+    uz.style.display = 'none';
+    btn.textContent = '← 通常アップロードに戻る';
+  } else {
+    dz.style.display = 'none';
+    uz.style.display = '';
+    btn.textContent = '2枚アップロードで掛け合わせ分析 →';
+  }
+}
+function handleSlotFile(e, slot) {
+  const f = e.target.files[0];
+  if (f) readCSV(f, rows => receiveSlot(rows, slot, f.name));
+  e.target.value = '';
+}
+function handleSlotDrop(e, slot) {
+  e.preventDefault();
+  document.getElementById('slot-'+slot).classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) readCSV(f, rows => receiveSlot(rows, slot, f.name));
+}
+function receiveSlot(rows, slot, fname) {
+  if (!rows.length) { showError('CSVが空です: '+fname); return; }
+  const slotEl  = document.getElementById('slot-'+slot);
+  const badgeEl = document.getElementById('badge-'+slot);
+  slotEl.classList.add('loaded');
+  badgeEl.textContent = '✓ ' + fname;
+  badgeEl.className = 'slot-badge ready';
+  if (slot === 'plat') platRows = rows;
+  else                  demoRows = rows;
+  // 両方揃ったらボタン表示
+  document.getElementById('btn-cross-analyze').style.display =
+    (platRows && demoRows) ? '' : 'none';
+}
+
+// ─── CROSS ANALYSIS ───────────────────────
+function runCrossAnalysis() {
+  try {
+    crossRows = computeCrossRows(platRows, demoRows);
+    if (!crossRows.length) { showError('掛け合わせ計算に失敗しました。日付・キャンペーン名が一致するデータがあるか確認してください。'); return; }
+    hideError();
+    dataMode = 'cross';
+    buildCrossDashboard();
+  } catch(err) { showError('掛け合わせエラー: ' + err.message); }
+}
+
+// 按分計算
+// プラットフォームCSVの「日付×キャンペーン」ごとのプラットフォーム構成比を
+// 年代・性別CSVの同じ「日付×キャンペーン」行に掛けて推計値を生成
+function computeCrossRows(platR, demoR) {
+  const result = [];
+
+  // 日付×キャンペーンごとにグループ化
+  const platGroups = groupBy(platR, r => r.date+'|||'+r.campaign);
+  const demoGroups = groupBy(demoR, r => r.date+'|||'+r.campaign);
+
+  for (const key of Object.keys(demoGroups)) {
+    const dRows = demoGroups[key];
+    const pRows = platGroups[key];
+    if (!pRows || !pRows.length) continue;
+
+    // プラットフォームの合計
+    const pTotal = agg(pRows);
+    if (!pTotal.impressions) continue;
+
+    // プラットフォームごとの構成比
+    const platforms = [...new Set(pRows.map(r=>r.platform).filter(Boolean))];
+    const pShare = {};
+    platforms.forEach(p => {
+      const pd = agg(pRows.filter(r=>r.platform===p));
+      pShare[p] = {
+        imp:    pTotal.impressions ? pd.impressions / pTotal.impressions : 0,
+        clicks: pTotal.clicks      ? pd.clicks      / pTotal.clicks      : 0,
+        spend:  pTotal.spend       ? pd.spend       / pTotal.spend       : 0,
+        conv:   pTotal.conversions ? pd.conversions / pTotal.conversions : 0,
+        reach:  pTotal.reach       ? pd.reach       / pTotal.reach       : 0,
+      };
+    });
+
+    // 年代・性別の各行に按分
+    for (const dr of dRows) {
+      for (const plat of platforms) {
+        const s = pShare[plat];
+        const imp    = Math.round(dr.impressions * s.imp);
+        const clicks = Math.round(dr.clicks      * s.clicks);
+        const spend  = Math.round(dr.spend       * s.spend);
+        const conv   = Math.round((dr.conversions||0) * s.conv);
+        const reach  = Math.round(dr.reach        * s.reach);
+        result.push({
+          date:        dr.date,
+          campaign:    dr.campaign,
+          platform:    plat,
+          age:         dr.age,
+          gender:      dr.gender,
+          impressions: imp,
+          clicks,
+          spend,
+          conversions: conv,
+          reach,
+          ctr: imp    ? clicks/imp*100   : 0,
+          cpc: clicks ? spend/clicks     : 0,
+          cpm: imp    ? spend/imp*1000   : 0,
+          cpa: conv   ? spend/conv       : 0,
+          cvr: clicks ? conv/clicks*100  : 0,
+        });
+      }
+    }
+  }
+  return result;
+}
+
+function groupBy(arr, keyFn) {
+  const map = {};
+  for (const r of arr) {
+    const k = keyFn(r);
+    if (!map[k]) map[k] = [];
+    map[k].push(r);
+  }
+  return map;
+}
+
+// ─── CROSS DASHBOARD ──────────────────────
+function buildCrossDashboard() {
+  document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('cross-section').classList.add('visible');
+
+  // 通常ダッシュボードはプラットフォームCSVで描画
+  allRows = platRows;
+  buildDashboard();
+
+  // 掛け合わせセクション
+  const camps   = sortedUniq(crossRows.map(r=>r.campaign).filter(Boolean));
+  const plats   = sortedUniq(crossRows.map(r=>r.platform).filter(Boolean));
+  const ages    = sortedUniq(crossRows.map(r=>r.age).filter(Boolean));
+  const genders = sortedUniq(crossRows.map(r=>r.gender).filter(Boolean));
+  crossActiveCamps   = new Set(camps);
+  crossActivePlats   = new Set(plats);
+  crossActiveAges    = new Set(ages);
+  crossActiveGenders = new Set(genders);
+
+  buildCrossFilters(camps, plats, ages, genders);
+  buildCrossHeatmaps();
+  buildCrossTable();
+}
+
+function buildCrossFilters(camps, plats, ages, genders) {
+  function makeFilter(containerId, items, activeSet, labelFn) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = items.map(v =>
+      `<div class="tag active" data-val="${escAttr(v)}">${labelFn(v)}</div>`
+    ).join('');
+    el.querySelectorAll('.tag').forEach(t => t.addEventListener('click', () => {
+      t.classList.toggle('active');
+      activeSet[t.classList.contains('active') ? 'add' : 'delete'](t.dataset.val);
+      buildCrossHeatmaps();
+      buildCrossTable();
+    }));
+  }
+  makeFilter('cross-camp-filter',   camps,   crossActiveCamps,   v => trunc(v,30));
+  makeFilter('cross-plat-filter',   plats,   crossActivePlats,   platLabel);
+  makeFilter('cross-age-filter',    ages,    crossActiveAges,    v => v);
+  makeFilter('cross-gender-filter', genders, crossActiveGenders, genderLabel);
+}
+
+function crossFiltered() {
+  return crossRows.filter(r =>
+    crossActiveCamps.has(r.campaign) &&
+    crossActivePlats.has(r.platform) &&
+    crossActiveAges.has(r.age) &&
+    crossActiveGenders.has(r.gender)
+  );
+}
+
+function buildCrossHeatmaps() {
+  const filtered = crossFiltered();
+  const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+  const plats = sortedUniq(filtered.map(r=>r.platform).filter(Boolean));
+  const ages  = sortedUniq(filtered.map(r=>r.age).filter(Boolean))
+    .sort((a,b) => { const ia=AGE_ORDER.indexOf(a),ib=AGE_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+
+  // 行=プラットフォーム, 列=年代
+  buildHeatmap2D(filtered, plats, ages, plats.map(platLabel), ages, 'ctr', 'cross-hm-ctr');
+  buildHeatmap2D(filtered, plats, ages, plats.map(platLabel), ages, 'cvr', 'cross-hm-cvr');
+  buildHeatmap2D(filtered, plats, ages, plats.map(platLabel), ages, 'cpa', 'cross-hm-cpa');
+  buildHeatmap2D(filtered, plats, ages, plats.map(platLabel), ages, 'cpc', 'cross-hm-cpc');
+  buildHeatmap2D(filtered, plats, ages, plats.map(platLabel), ages, 'cpm', 'cross-hm-cpm');
+}
+
+function buildCrossTable() {
+  const filtered = crossFiltered();
+  const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+  const keys = [...new Set(filtered.map(r => r.platform+'|||'+r.age+'|||'+r.gender))];
+  const rows = keys.map(k => {
+    const [platform, age, gender] = k.split('|||');
+    return { platform, age, gender,
+      ...agg(filtered.filter(r=>r.platform===platform&&r.age===age&&r.gender===gender)) };
+  }).sort((a,b) => {
+    if (a.platform !== b.platform) return a.platform.localeCompare(b.platform);
+    const ia=AGE_ORDER.indexOf(a.age), ib=AGE_ORDER.indexOf(b.age);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  const total = agg(filtered);
+
+  const dataRows = rows.map(r => `
+    <tr>
+      <td><span class="plat-badge plat-${r.platform}">${platLabel(r.platform)}</span></td>
+      <td class="t-num" style="color:var(--text);">${r.age||'–'}</td>
+      <td><span class="gender-badge gender-${r.gender}">${genderLabel(r.gender)}</span></td>
+      <td class="t-num">${fmtN(r.impressions)}</td>
+      <td class="t-num">${fmtN(r.clicks)}</td>
+      <td class="t-num">${r.ctr.toFixed(2)}%</td>
+      <td class="t-num">¥${fmtN(Math.round(r.spend))}</td>
+      <td class="t-num">${r.conversions?fmtN(r.conversions):'–'}</td>
+      <td class="t-num">${r.cpa?'¥'+fmtN(Math.round(r.cpa)):'–'}</td>
+      <td class="t-num">¥${Math.round(r.cpc)}</td>
+      <td class="t-num">¥${Math.round(r.cpm)}</td>
+    </tr>`).join('');
+
+  const totalRow = `
+    <tr class="total-row">
+      <td>合計</td><td>–</td><td>–</td>
+      <td class="t-num">${fmtN(total.impressions)}</td>
+      <td class="t-num">${fmtN(total.clicks)}</td>
+      <td class="t-num">${total.ctr.toFixed(2)}%</td>
+      <td class="t-num">¥${fmtN(Math.round(total.spend))}</td>
+      <td class="t-num">${total.conversions?fmtN(total.conversions):'–'}</td>
+      <td class="t-num">${total.cpa?'¥'+fmtN(Math.round(total.cpa)):'–'}</td>
+      <td class="t-num">¥${Math.round(total.cpc)}</td>
+      <td class="t-num">¥${Math.round(total.cpm)}</td>
+    </tr>`;
+
+  document.getElementById('cross-tbody').innerHTML = dataRows + totalRow;
+}
+
+// ─── SAMPLE CROSS ─────────────────────────
+function loadSampleCross() {
+  const camps = ['OPEN HUB_Audience_リンクアド','OPEN HUB_Audience_リードアド'];
+  const plats = ['facebook','instagram','threads','audience_network'];
+  const ages  = ['18-24','25-34','35-44','45-54','55-64'];
+  const gends = ['male','female','unknown'];
+  const pRowsArr = [], dRowsArr = [];
+
+  for (let d = 15; d >= 0; d--) {
+    const dt = new Date(); dt.setDate(dt.getDate()-d);
+    const date = dt.toISOString().slice(0,10);
+    camps.forEach(camp => {
+      // プラットフォームCSV
+      plats.forEach(plat => {
+        const base = {facebook:4000,instagram:2200,threads:700,audience_network:350}[plat]||500;
+        const imp    = Math.round(base*(0.7+Math.random()*0.8));
+        const clicks = Math.round(imp*(0.01+Math.random()*0.04));
+        const spend  = Math.round(clicks*(60+Math.random()*140));
+        const conv   = plat==='facebook'?Math.round(clicks*(0.05+Math.random()*0.15)):0;
+        pRowsArr.push({ date, campaign:camp, platform:plat, age:'', gender:'',
+          impressions:imp, clicks, spend, reach:Math.round(imp*0.75), conversions:conv,
+          ctr:imp?clicks/imp*100:0, cpc:clicks?spend/clicks:0, cpm:imp?spend/imp*1000:0, cpa:conv?spend/conv:0, cvr:0 });
+      });
+      // 年代性別CSV
+      ages.forEach(age => gends.forEach(gender => {
+        const base = {male:3000,female:3500,unknown:500}[gender]||1000;
+        const am   = age==='25-34'?1.3:age==='35-44'?1.1:0.8;
+        const imp    = Math.round(base*am*(0.7+Math.random()*0.6));
+        const clicks = Math.round(imp*(0.01+Math.random()*0.05));
+        const spend  = Math.round(clicks*(70+Math.random()*130));
+        const conv   = Math.round(clicks*(0.02+Math.random()*0.1));
+        dRowsArr.push({ date, campaign:camp, platform:'', age, gender,
+          impressions:imp, clicks, spend, reach:Math.round(imp*0.8), conversions:conv,
+          ctr:imp?clicks/imp*100:0, cpc:clicks?spend/clicks:0, cpm:imp?spend/imp*1000:0, cpa:conv?spend/conv:0, cvr:clicks?conv/clicks*100:0 });
+      }));
+    });
+  }
+
+  platRows = pRowsArr; demoRows = dRowsArr;
+  // slot UIを更新
+  if (!uploadModeVisible) toggleUploadMode();
+  ['plat','demo'].forEach(s => {
+    document.getElementById('slot-'+s).classList.add('loaded');
+    document.getElementById('badge-'+s).textContent = '✓ サンプルデータ';
+    document.getElementById('badge-'+s).className = 'slot-badge ready';
+  });
+  document.getElementById('btn-cross-analyze').style.display = '';
+  runCrossAnalysis();
+}
+
+// ─── CSV PARSER ───────────────────────────
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, ''); // BOM除去
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+
+  const delim = lines[0].split('\t').length > lines[0].split(',').length ? '\t' : ',';
+  const rawHeaders = splitCSVLine(lines[0], delim).map(h => h.replace(/^"|"$/g,'').trim());
+
+  // 列名マッピング（日本語・英語両対応）
+  const FIELD_MAP = {
+    date:     ['日', 'day', 'date', 'レポート開始日', 'reporting starts', 'reporting start'],
+    campaign: ['キャンペーン名', 'campaign name', 'campaign'],
+    adset:    ['広告セット名', 'ad set name', 'adset name', 'adset'],
+    platform: ['プラットフォーム', 'platform', 'publisher platform'],
+    age:      ['年齢', 'age'],
+    gender:   ['性別', 'gender'],
+    impressions: ['インプレッション', 'impressions', 'impr', 'impression'],
+    clicks:   ['リンクのクリック', 'link clicks', 'クリック数', 'clicks', 'click'],
+    spend:    ['消化金額 (jpy)', '消化金額', 'amount spent (jpy)', 'amount spent', 'spend', 'cost'],
+    reach:       ['リーチ', 'reach'],
+    conversions: ['結果', 'results', 'conversions', 'purchases', '購入'],
+  };
+
+  // ヘッダーインデックスを解決
+  const idx = {};
+  for (const [field, candidates] of Object.entries(FIELD_MAP)) {
+    for (const c of candidates) {
+      const i = rawHeaders.findIndex(h => h.toLowerCase() === c.toLowerCase());
+      if (i >= 0) { idx[field] = i; break; }
+    }
+    // 部分一致フォールバック
+    if (idx[field] === undefined) {
+      for (const c of candidates) {
+        const i = rawHeaders.findIndex(h => h.toLowerCase().includes(c.toLowerCase()));
+        if (i >= 0) { idx[field] = i; break; }
+      }
+    }
+  }
+
+  function get(vals, field) {
+    if (idx[field] === undefined) return '';
+    return (vals[idx[field]] || '').replace(/^"|"$/g,'').trim();
+  }
+  function getNum(vals, field) {
+    return parseFloat(get(vals, field).replace(/,/g,'')) || 0;
+  }
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = splitCSVLine(lines[i], delim);
+
+    const imp    = getNum(vals, 'impressions');
+    const clicks = getNum(vals, 'clicks');
+    const spend  = getNum(vals, 'spend');
+    const reach  = getNum(vals, 'reach');
+    const conv   = getNum(vals, 'conversions');
+
+    rows.push({
+      date:     get(vals, 'date'),
+      campaign: get(vals, 'campaign'),
+      adset:    get(vals, 'adset'),
+      platform: get(vals, 'platform'),
+      age:      get(vals, 'age'),
+      gender:   get(vals, 'gender'),
+      impressions: imp,
+      clicks,
+      spend,
+      reach,
+      conversions: conv,
+      ctr: imp    ? clicks / imp   * 100  : 0,
+      cpc: clicks ? spend  / clicks       : 0,
+      cpm: imp    ? spend  / imp   * 1000 : 0,
+      cpa: conv   ? spend  / conv         : 0,
+    });
+  }
+  return rows.filter(r => r.date || r.campaign);
+}
+
+function splitCSVLine(line, delim) {
+  const res = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === delim && !inQ) { res.push(cur); cur = ''; }
+    else cur += c;
+  }
+  res.push(cur);
+  return res;
+}
+
+// ─── BUILD DASHBOARD ──────────────────────
+function buildDashboard() {
+  document.getElementById('upload-zone').style.display = 'none';
+  const dash = document.getElementById('dashboard');
+  dash.classList.add('visible');
+
+  const campaigns = [...new Set(allRows.map(r => r.campaign).filter(Boolean))];
+  const platforms  = [...new Set(allRows.map(r => r.platform).filter(Boolean))];
+  const ages       = [...new Set(allRows.map(r => r.age).filter(Boolean))];
+  const genders    = [...new Set(allRows.map(r => r.gender).filter(Boolean))];
+
+  // モード自動判定: 年齢または性別データがあれば demo モード
+  dataMode = (ages.length > 0 || genders.length > 0) ? 'demo' : 'platform';
+
+  activeCamps   = new Set(campaigns);
+  activePlats   = new Set(platforms);
+  activeAges    = new Set(ages);
+  activeGenders = new Set(genders);
+
+  buildKPIs();
+  buildDateRange();
+  buildFilters(campaigns, platforms, ages, genders);
+  buildDailyChart();
+  buildBreakdownCharts();
+  buildDetailTable();
+  buildDailyTable();
+}
+
+// ─── KPI ──────────────────────────────────
+function buildKPIs() {
+  const d = agg(allRows);
+  document.getElementById('kpi-grid').innerHTML = [
+    { label:'インプレッション', val: fmtN(d.impressions),            cls:'c0' },
+    { label:'クリック数',       val: fmtN(d.clicks),                 cls:'c1' },
+    { label:'消化金額',         val: '¥'+fmtN(Math.round(d.spend)),  cls:'c2' },
+    { label:'CTR',              val: d.ctr.toFixed(2)+'%',           cls:'c3' },
+    { label:'CPC',              val: '¥'+Math.round(d.cpc),          cls:'c4' },
+    { label:'CPM',              val: '¥'+Math.round(d.cpm),          cls:'c5' },
+    { label:'CV数',             val: fmtN(d.conversions),            cls:'c1' },
+    { label:'CPA',              val: d.cpa ? '¥'+fmtN(Math.round(d.cpa)) : '–', cls:'c4' },
+    { label:'リーチ',           val: fmtN(d.reach),                  cls:'c0' },
+  ].map(k => `<div class="kpi-card ${k.cls}">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value">${k.val}</div>
+  </div>`).join('');
+}
+
+function buildDateRange() {
+  const dates = [...new Set(allRows.map(r=>r.date).filter(Boolean))].sort();
+  if (dates.length) {
+    document.getElementById('date-range').textContent =
+      dates[0] + ' 〜 ' + dates[dates.length-1] + '（' + dates.length + '日間）';
+  }
+}
+
+// ─── FILTERS ──────────────────────────────
+function buildFilters(campaigns, platforms, ages, genders) {
+  // Campaign tags
+  const cf = document.getElementById('camp-filter');
+  cf.innerHTML = campaigns.map(c =>
+    `<div class="tag active" data-val="${escAttr(c)}">${c}</div>`
+  ).join('');
+  cf.querySelectorAll('.tag').forEach(t => t.addEventListener('click', () => {
+    t.classList.toggle('active');
+    activeCamps[t.classList.contains('active') ? 'add' : 'delete'](t.dataset.val);
+    refresh();
+  }));
+
+  // Sub-filter: platform or age/gender
+  const wrap = document.getElementById('sub-filter-wrap');
+  if (dataMode === 'platform') {
+    wrap.innerHTML = `
+      <div class="filter-label">プラットフォーム</div>
+      <div class="filter-row" id="plat-filter">
+        ${platforms.map(p => `<div class="tag active" data-val="${escAttr(p)}">${platLabel(p)}</div>`).join('')}
+      </div>`;
+    wrap.querySelectorAll('#plat-filter .tag').forEach(t => t.addEventListener('click', () => {
+      t.classList.toggle('active');
+      activePlats[t.classList.contains('active') ? 'add' : 'delete'](t.dataset.val);
+      refresh();
+    }));
+  } else {
+    // Age filter
+    const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+    const sortedAges = [...ages].sort((a,b) => {
+      const ia = AGE_ORDER.indexOf(a), ib = AGE_ORDER.indexOf(b);
+      return (ia<0?99:ia) - (ib<0?99:ib);
+    });
+    wrap.innerHTML = `
+      <div class="filter-label">年代</div>
+      <div class="filter-row" id="age-filter">
+        ${sortedAges.map(a => `<div class="tag active" data-val="${escAttr(a)}">${a}</div>`).join('')}
+      </div>
+      <div class="filter-label" style="margin-top:4px;">性別</div>
+      <div class="filter-row" id="gender-filter">
+        ${genders.map(g => `<div class="tag active" data-val="${escAttr(g)}">${genderLabel(g)}</div>`).join('')}
+      </div>`;
+    wrap.querySelectorAll('#age-filter .tag').forEach(t => t.addEventListener('click', () => {
+      t.classList.toggle('active');
+      activeAges[t.classList.contains('active') ? 'add' : 'delete'](t.dataset.val);
+      refresh();
+    }));
+    wrap.querySelectorAll('#gender-filter .tag').forEach(t => t.addEventListener('click', () => {
+      t.classList.toggle('active');
+      activeGenders[t.classList.contains('active') ? 'add' : 'delete'](t.dataset.val);
+      refresh();
+    }));
+  }
+
+  // Metric tabs
+  document.getElementById('metric-tabs').querySelectorAll('.metric-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.metric-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeMetric = tab.dataset.m;
+      buildDailyChart();
+    });
+  });
+}
+
+function refresh() {
+  buildDailyChart();
+  buildBreakdownCharts();
+  buildDetailTable();
+  buildDailyTable();
+}
+
+// ─── DAILY CHART ──────────────────────────
+function buildDailyChart() {
+  const filtered   = filteredRows();
+  const dates      = sortedUniq(filtered.map(r=>r.date).filter(Boolean));
+  const campaigns  = sortedUniq(filtered.map(r=>r.campaign).filter(Boolean));
+  const singleCamp = activeCamps.size === 1 && campaigns.length === 1;
+
+  let datasets;
+  if (dataMode === 'platform') {
+    if (singleCamp) {
+      const platforms = sortedUniq(filtered.map(r=>r.platform).filter(Boolean));
+      datasets = platforms.map((plat, i) => ({
+        label: platLabel(plat),
+        data: dates.map(d => agg(filtered.filter(r=>r.platform===plat&&r.date===d))[activeMetric]),
+        borderColor: COLORS[i%COLORS.length], backgroundColor: COLORS[i%COLORS.length]+'18',
+        fill:false, tension:0.35, pointRadius:3, pointHoverRadius:6, borderWidth:2
+      }));
+      document.getElementById('daily-chart-title').textContent =
+        campaigns[0] + ' ― プラットフォーム別 ' + METRIC_LABELS[activeMetric];
+    } else {
+      datasets = campaigns.map((camp, i) => ({
+        label: camp,
+        data: dates.map(d => agg(filtered.filter(r=>r.campaign===camp&&r.date===d))[activeMetric]),
+        borderColor: COLORS[i%COLORS.length], backgroundColor: COLORS[i%COLORS.length]+'18',
+        fill:false, tension:0.35, pointRadius:3, pointHoverRadius:6, borderWidth:2
+      }));
+      document.getElementById('daily-chart-title').textContent =
+        'デイリー ' + METRIC_LABELS[activeMetric] + ' 推移';
+    }
+  } else {
+    // demo mode: 年代別 or 性別別
+    const ages    = sortedUniq(filtered.map(r=>r.age).filter(Boolean));
+    const genders = sortedUniq(filtered.map(r=>r.gender).filter(Boolean));
+    if (singleCamp && ages.length > 0) {
+      // キャンペーン1件 → 年代別
+      datasets = ages.map((age, i) => ({
+        label: age,
+        data: dates.map(d => agg(filtered.filter(r=>r.age===age&&r.date===d))[activeMetric]),
+        borderColor: COLORS[i%COLORS.length], backgroundColor: COLORS[i%COLORS.length]+'18',
+        fill:false, tension:0.35, pointRadius:3, pointHoverRadius:6, borderWidth:2
+      }));
+      document.getElementById('daily-chart-title').textContent =
+        campaigns[0] + ' ― 年代別 ' + METRIC_LABELS[activeMetric];
+    } else {
+      // 複数キャンペーン → キャンペーン別
+      datasets = campaigns.map((camp, i) => ({
+        label: camp,
+        data: dates.map(d => agg(filtered.filter(r=>r.campaign===camp&&r.date===d))[activeMetric]),
+        borderColor: COLORS[i%COLORS.length], backgroundColor: COLORS[i%COLORS.length]+'18',
+        fill:false, tension:0.35, pointRadius:3, pointHoverRadius:6, borderWidth:2
+      }));
+      document.getElementById('daily-chart-title').textContent =
+        'デイリー ' + METRIC_LABELS[activeMetric] + ' 推移';
+    }
+  }
+
+  destroyChart('daily');
+  charts.daily = new Chart(
+    document.getElementById('daily-chart').getContext('2d'),
+    {
+      type: 'line',
+      data: { labels: dates, datasets },
+      options: baseOpts({
+        tooltip_cb: ctx => ` ${ctx.dataset.label}: ${fmtMetric(ctx.raw, activeMetric)}`,
+        y_cb: v => fmtMetric(v, activeMetric)
+      })
+    }
+  );
+}
+
+// ─── BREAKDOWN CHARTS (platform or demo) ──
+function buildBreakdownCharts() {
+  if (dataMode === 'platform') {
+    buildPlatCharts();
+  } else {
+    buildDemoCharts();
+  }
+}
+
+function buildPlatCharts() {
+  const filtered  = filteredRows();
+  const platforms = sortedUniq(filtered.map(r=>r.platform).filter(Boolean));
+  const platData  = platforms.map(p => agg(filtered.filter(r=>r.platform===p)));
+
+  // Update section labels
+  document.getElementById('breakdown-section-title').textContent = 'プラットフォーム別分析';
+  document.getElementById('breakdown-section-tag').textContent   = 'Platform';
+  document.getElementById('breakdown-chart1-title').textContent  = '消化金額シェア';
+  document.getElementById('breakdown-chart1-sub').textContent    = 'プラットフォーム別の消化比率';
+  document.getElementById('breakdown-chart2-title').textContent  = 'CTR / CPC 比較';
+  document.getElementById('breakdown-chart2-sub').textContent    = 'プラットフォーム別の効率指標';
+  // hide demo cards, show platform heatmap cards
+  ['demo-heatmap-card','demo-cvr-card','demo-cpa-card','demo-cpc-card','demo-cpm-card']
+    .forEach(id => document.getElementById(id).style.display = 'none');
+  ['plat-heatmap-ctr-card','plat-heatmap-cvr-card','plat-heatmap-cpa-card','plat-heatmap-cpc-card','plat-heatmap-cpm-card']
+    .forEach(id => document.getElementById(id).style.display = '');
+
+  // Doughnut: spend
+  destroyChart('breakdownSpend');
+  charts.breakdownSpend = new Chart(
+    document.getElementById('breakdown-spend-chart').getContext('2d'),
+    {
+      type: 'doughnut',
+      data: {
+        labels: platforms.map(platLabel),
+        datasets: [{ data: platData.map(d=>d.spend), backgroundColor: COLORS, borderWidth:0, hoverOffset:8 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, cutout:'62%',
+        plugins: {
+          legend: { position:'right', labels:{ color:'#9999b8', font:{family:'DM Sans',size:12}, padding:14 } },
+          tooltip: {
+            backgroundColor:'#12121a', borderColor:'#2a2a3e', borderWidth:1,
+            titleColor:'#e8e8f0', bodyColor:'#9999b8', bodyFont:{family:'DM Mono',size:12},
+            callbacks: { label: ctx => {
+              const total = platData.reduce((s,d)=>s+d.spend,0);
+              return ` ¥${fmtN(Math.round(ctx.raw))}  (${total?(ctx.raw/total*100).toFixed(1):0}%)`;
+            }}
+          }
+        }
+      }
+    }
+  );
+
+  // Bar: CTR / CPC
+  destroyChart('breakdownMetrics');
+  charts.breakdownMetrics = new Chart(
+    document.getElementById('breakdown-metrics-chart').getContext('2d'),
+    {
+      type:'bar',
+      data: {
+        labels: platforms.map(platLabel),
+        datasets: [
+          { label:'CTR (%)', yAxisID:'y1', data:platData.map(d=>+d.ctr.toFixed(3)), backgroundColor:'#4f6ef7aa', borderColor:'#4f6ef7', borderWidth:1, borderRadius:4 },
+          { label:'CPC (¥)', yAxisID:'y2', data:platData.map(d=>Math.round(d.cpc)), backgroundColor:'#a855f7aa', borderColor:'#a855f7', borderWidth:1, borderRadius:4 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend:{ labels:{ color:'#9999b8', font:{family:'DM Sans',size:12} } },
+          tooltip:{ backgroundColor:'#12121a', borderColor:'#2a2a3e', borderWidth:1, titleColor:'#e8e8f0', bodyColor:'#9999b8', bodyFont:{family:'DM Mono',size:12} }
+        },
+        scales: {
+          x:  { ticks:{color:'#6b6b8a',font:{family:'DM Sans',size:12}}, grid:{color:'#1a1a26'} },
+          y1: { position:'left',  ticks:{color:'#4f6ef7',font:{family:'DM Mono',size:11},callback:v=>v+'%'}, grid:{color:'#1a1a26'} },
+          y2: { position:'right', ticks:{color:'#a855f7',font:{family:'DM Mono',size:11},callback:v=>'¥'+v}, grid:{display:false} }
+        }
+      }
+    }
+  );
+
+  // Heatmaps: キャンペーン × プラットフォーム
+  const campaigns = sortedUniq(filtered.map(r=>r.campaign).filter(Boolean));
+  const campLabels = campaigns.map(c => trunc(c, 20));
+  buildHeatmap2D(filtered, campaigns, platforms, campLabels, platforms.map(platLabel), 'ctr', 'plat-heatmap-ctr-container');
+  buildHeatmap2D(filtered, campaigns, platforms, campLabels, platforms.map(platLabel), 'cvr', 'plat-heatmap-cvr-container');
+  buildHeatmap2D(filtered, campaigns, platforms, campLabels, platforms.map(platLabel), 'cpa', 'plat-heatmap-cpa-container');
+  buildHeatmap2D(filtered, campaigns, platforms, campLabels, platforms.map(platLabel), 'cpc', 'plat-heatmap-cpc-container');
+  buildHeatmap2D(filtered, campaigns, platforms, campLabels, platforms.map(platLabel), 'cpm', 'plat-heatmap-cpm-container');
+}
+
+function buildDemoCharts() {
+  const filtered = filteredRows();
+  const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+  const ages    = sortedUniq(filtered.map(r=>r.age).filter(Boolean))
+    .sort((a,b) => { const ia=AGE_ORDER.indexOf(a),ib=AGE_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+  const genders = sortedUniq(filtered.map(r=>r.gender).filter(Boolean));
+
+  // Update section labels
+  document.getElementById('breakdown-section-title').textContent = '年代・性別 分析';
+  document.getElementById('breakdown-section-tag').textContent   = 'Demographics';
+  document.getElementById('breakdown-chart1-title').textContent  = '年代別 消化金額シェア';
+  document.getElementById('breakdown-chart1-sub').textContent    = '年代別の消化比率';
+  document.getElementById('breakdown-chart2-title').textContent  = '性別 CTR / CPC 比較';
+  document.getElementById('breakdown-chart2-sub').textContent    = '性別ごとの効率指標';
+  document.getElementById('demo-heatmap-card').style.display = '';
+  document.getElementById('demo-cvr-card').style.display     = '';
+  document.getElementById('demo-cpa-card').style.display     = '';
+  document.getElementById('demo-cpc-card').style.display     = '';
+  document.getElementById('demo-cpm-card').style.display     = '';
+  // hide platform heatmap cards
+  ['plat-heatmap-ctr-card','plat-heatmap-cvr-card','plat-heatmap-cpa-card','plat-heatmap-cpc-card','plat-heatmap-cpm-card']
+    .forEach(id => document.getElementById(id).style.display = 'none');
+
+  const ageData    = ages.map(a    => agg(filtered.filter(r=>r.age===a)));
+  const genderData = genders.map(g => agg(filtered.filter(r=>r.gender===g)));
+
+  // Doughnut: age spend
+  destroyChart('breakdownSpend');
+  charts.breakdownSpend = new Chart(
+    document.getElementById('breakdown-spend-chart').getContext('2d'),
+    {
+      type:'doughnut',
+      data: {
+        labels: ages,
+        datasets: [{ data:ageData.map(d=>d.spend), backgroundColor:COLORS, borderWidth:0, hoverOffset:8 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, cutout:'62%',
+        plugins: {
+          legend: { position:'right', labels:{ color:'#9999b8', font:{family:'DM Sans',size:12}, padding:12 } },
+          tooltip: {
+            backgroundColor:'#12121a', borderColor:'#2a2a3e', borderWidth:1,
+            titleColor:'#e8e8f0', bodyColor:'#9999b8', bodyFont:{family:'DM Mono',size:12},
+            callbacks: { label: ctx => {
+              const total = ageData.reduce((s,d)=>s+d.spend,0);
+              return ` ¥${fmtN(Math.round(ctx.raw))}  (${total?(ctx.raw/total*100).toFixed(1):0}%)`;
+            }}
+          }
+        }
+      }
+    }
+  );
+
+  // Bar: gender CTR / CPC
+  destroyChart('breakdownMetrics');
+  charts.breakdownMetrics = new Chart(
+    document.getElementById('breakdown-metrics-chart').getContext('2d'),
+    {
+      type:'bar',
+      data: {
+        labels: genders.map(genderLabel),
+        datasets: [
+          { label:'CTR (%)', yAxisID:'y1', data:genderData.map(d=>+d.ctr.toFixed(3)), backgroundColor:'#4f6ef7aa', borderColor:'#4f6ef7', borderWidth:1, borderRadius:4 },
+          { label:'CPC (¥)', yAxisID:'y2', data:genderData.map(d=>Math.round(d.cpc)), backgroundColor:'#a855f7aa', borderColor:'#a855f7', borderWidth:1, borderRadius:4 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: {
+          legend:{ labels:{ color:'#9999b8', font:{family:'DM Sans',size:12} } },
+          tooltip:{ backgroundColor:'#12121a', borderColor:'#2a2a3e', borderWidth:1, titleColor:'#e8e8f0', bodyColor:'#9999b8', bodyFont:{family:'DM Mono',size:12} }
+        },
+        scales: {
+          x:  { ticks:{color:'#6b6b8a',font:{family:'DM Sans',size:12}}, grid:{color:'#1a1a26'} },
+          y1: { position:'left',  ticks:{color:'#4f6ef7',font:{family:'DM Mono',size:11},callback:v=>v+'%'}, grid:{color:'#1a1a26'} },
+          y2: { position:'right', ticks:{color:'#a855f7',font:{family:'DM Mono',size:11},callback:v=>'¥'+v}, grid:{display:false} }
+        }
+      }
+    }
+  );
+
+  // Heatmaps (5種)
+  buildHeatmap2D(filtered, ages, genders, ages, genders.map(genderLabel), 'ctr', 'heatmap-ctr-container');
+  buildHeatmap2D(filtered, ages, genders, ages, genders.map(genderLabel), 'cvr', 'heatmap-cvr-container');
+  buildHeatmap2D(filtered, ages, genders, ages, genders.map(genderLabel), 'cpa', 'heatmap-cpa-container');
+  buildHeatmap2D(filtered, ages, genders, ages, genders.map(genderLabel), 'cpc', 'heatmap-cpc-container');
+  buildHeatmap2D(filtered, ages, genders, ages, genders.map(genderLabel), 'cpm', 'heatmap-cpm-container');
+}
+
+// ─── HEATMAP (汎用) ───────────────────────
+function buildHeatmap2D(data, rowKeys, colKeys, rowLabels, colLabels, metric, containerId) {
+  // rowField / colField: キーの値がどのフィールドと一致するか判定
+  const rowField = rowKeys.every(k => data.some(r => r.platform === k)) ? 'platform'
+                 : rowKeys.every(k => data.some(r => r.age      === k)) ? 'age'
+                 : rowKeys.every(k => data.some(r => r.campaign === k)) ? 'campaign'
+                 : 'age';
+  const colField = colKeys.every(k => data.some(r => r.age      === k)) ? 'age'
+                 : colKeys.every(k => data.some(r => r.gender   === k)) ? 'gender'
+                 : colKeys.every(k => data.some(r => r.platform === k)) ? 'platform'
+                 : 'gender';
+
+  const matrix = rowKeys.map(rk => colKeys.map(ck => {
+    const rows = data.filter(r => r[rowField] === rk && r[colField] === ck);
+    if (!rows.length) return null;
+    return agg(rows)[metric];
+  }));
+
+  const allVals = matrix.flat().filter(v => v !== null && v > 0);
+  if (!allVals.length) {
+    document.getElementById(containerId).innerHTML =
+      '<div style="padding:20px;color:var(--text-dim);font-size:12px;">データなし</div>';
+    return;
+  }
+  const minV = Math.min(...allVals), maxV = Math.max(...allVals);
+
+  const isCost = ['cpa','cpc','cpm','spend'].includes(metric);
+  const isRate = ['ctr','cvr'].includes(metric);
+  const colorLow  = isCost ? '#1a3a2a' : '#1a1a40';
+  const colorHigh = isCost ? '#ff6b6b' : '#4f6ef7';
+
+  let html = `<div class="heatmap-wrap">
+    <div class="heatmap-header">
+      ${colLabels.map(l => `<div class="heatmap-header-cell">${l}</div>`).join('')}
+    </div>`;
+
+  rowKeys.forEach((rk, ri) => {
+    html += `<div class="heatmap-row"><div class="heatmap-label-col">${rowLabels[ri]}</div>`;
+    colKeys.forEach((ck, ci) => {
+      const v = matrix[ri][ci];
+      if (v === null) {
+        html += `<div class="heatmap-cell empty">–</div>`;
+      } else {
+        const t   = maxV > minV ? (v - minV) / (maxV - minV) : 0.5;
+        const bg  = lerpColor(colorLow, colorHigh, t);
+        const lbl = isRate ? v.toFixed(2)+'%' : (v > 0 ? '¥'+Math.round(v).toLocaleString('ja-JP') : '–');
+        html += `<div class="heatmap-cell" style="background:${bg};" title="${rowLabels[ri]} / ${colLabels[ci]}: ${lbl}">${lbl}</div>`;
+      }
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="heatmap-legend">
+    <span>${isCost ? '低コスト' : isRate ? '低率' : '低'}</span>
+    <div class="heatmap-legend-bar" style="background:linear-gradient(90deg,${colorLow},${colorHigh});"></div>
+    <span>${isCost ? '高コスト' : isRate ? '高率' : '高'}</span>
+  </div></div>`;
+
+  document.getElementById(containerId).innerHTML = html;
+}
+
+function lerpColor(c1, c2, t) {
+  const h = s => parseInt(s.replace('#','').slice(0,2),16);
+  const p = (s,o) => parseInt(s.replace('#','').slice(o,o+2),16);
+  const r = Math.round(p(c1,0)+(p(c2,0)-p(c1,0))*t);
+  const g = Math.round(p(c1,2)+(p(c2,2)-p(c1,2))*t);
+  const b = Math.round(p(c1,4)+(p(c2,4)-p(c1,4))*t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ─── TABLES ───────────────────────────────
+function buildDetailTable() {
+  const filtered = filteredRows();
+  const total = agg(filtered);
+
+  if (dataMode === 'platform') {
+    document.getElementById('detail-table-title').textContent = 'キャンペーン × プラットフォーム 詳細';
+    document.getElementById('detail-thead').innerHTML = `<tr>
+      <th>キャンペーン名</th><th>プラットフォーム</th>
+      <th>インプレッション</th><th>クリック</th><th>CTR</th>
+      <th>消化金額</th><th>CV数</th><th>CPA</th><th>CPC</th><th>CPM</th><th>リーチ</th>
+    </tr>`;
+    const keys = [...new Set(filtered.map(r => r.campaign+'|||'+r.platform))];
+    const rows = keys.map(k => {
+      const [camp, plat] = k.split('|||');
+      return { camp, plat, ...agg(filtered.filter(r=>r.campaign===camp&&r.platform===plat)) };
+    }).sort((a,b)=>b.spend-a.spend);
+
+    const dataRows = rows.map(r=>`
+      <tr>
+        <td class="t-name" title="${escAttr(r.camp)}">${trunc(r.camp,34)}</td>
+        <td><span class="plat-badge plat-${r.plat}">${platLabel(r.plat)}</span></td>
+        <td class="t-num">${fmtN(r.impressions)}</td>
+        <td class="t-num">${fmtN(r.clicks)}</td>
+        <td class="t-num">${r.ctr.toFixed(2)}%</td>
+        <td class="t-num">¥${fmtN(Math.round(r.spend))}</td>
+        <td class="t-num">${r.conversions?fmtN(r.conversions):'–'}</td>
+        <td class="t-num">${r.cpa?'¥'+fmtN(Math.round(r.cpa)):'–'}</td>
+        <td class="t-num">¥${Math.round(r.cpc)}</td>
+        <td class="t-num">¥${Math.round(r.cpm)}</td>
+        <td class="t-num">${fmtN(r.reach)}</td>
+      </tr>`).join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td class="t-name">合計</td>
+        <td>–</td>
+        <td class="t-num">${fmtN(total.impressions)}</td>
+        <td class="t-num">${fmtN(total.clicks)}</td>
+        <td class="t-num">${total.ctr.toFixed(2)}%</td>
+        <td class="t-num">¥${fmtN(Math.round(total.spend))}</td>
+        <td class="t-num">${total.conversions?fmtN(total.conversions):'–'}</td>
+        <td class="t-num">${total.cpa?'¥'+fmtN(Math.round(total.cpa)):'–'}</td>
+        <td class="t-num">¥${Math.round(total.cpc)}</td>
+        <td class="t-num">¥${Math.round(total.cpm)}</td>
+        <td class="t-num">${fmtN(total.reach)}</td>
+      </tr>`;
+
+    document.getElementById('detail-tbody').innerHTML = dataRows + totalRow;
+
+  } else {
+    document.getElementById('detail-table-title').textContent = 'キャンペーン × 年代 × 性別 詳細';
+    document.getElementById('detail-thead').innerHTML = `<tr>
+      <th>キャンペーン名</th><th>年代</th><th>性別</th>
+      <th>インプレッション</th><th>クリック</th><th>CTR</th>
+      <th>消化金額</th><th>CV数</th><th>CPA</th><th>CPC</th><th>CPM</th><th>リーチ</th>
+    </tr>`;
+    const AGE_ORDER = ['13-17','18-24','25-34','35-44','45-54','55-64','65+'];
+    const keys = [...new Set(filtered.map(r => r.campaign+'|||'+r.age+'|||'+r.gender))];
+    const rows = keys.map(k => {
+      const [camp, age, gender] = k.split('|||');
+      return { camp, age, gender, ...agg(filtered.filter(r=>r.campaign===camp&&r.age===age&&r.gender===gender)) };
+    }).sort((a,b) => {
+      if (a.camp !== b.camp) return a.camp.localeCompare(b.camp);
+      const ia = AGE_ORDER.indexOf(a.age), ib = AGE_ORDER.indexOf(b.age);
+      return (ia<0?99:ia)-(ib<0?99:ib);
+    });
+
+    const dataRows = rows.map(r=>`
+      <tr>
+        <td class="t-name" title="${escAttr(r.camp)}">${trunc(r.camp,30)}</td>
+        <td class="t-num" style="color:var(--text);">${r.age||'–'}</td>
+        <td><span class="gender-badge gender-${r.gender}">${genderLabel(r.gender)}</span></td>
+        <td class="t-num">${fmtN(r.impressions)}</td>
+        <td class="t-num">${fmtN(r.clicks)}</td>
+        <td class="t-num">${r.ctr.toFixed(2)}%</td>
+        <td class="t-num">¥${fmtN(Math.round(r.spend))}</td>
+        <td class="t-num">${r.conversions?fmtN(r.conversions):'–'}</td>
+        <td class="t-num">${r.cpa?'¥'+fmtN(Math.round(r.cpa)):'–'}</td>
+        <td class="t-num">¥${Math.round(r.cpc)}</td>
+        <td class="t-num">¥${Math.round(r.cpm)}</td>
+        <td class="t-num">${fmtN(r.reach)}</td>
+      </tr>`).join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td class="t-name">合計</td>
+        <td>–</td><td>–</td>
+        <td class="t-num">${fmtN(total.impressions)}</td>
+        <td class="t-num">${fmtN(total.clicks)}</td>
+        <td class="t-num">${total.ctr.toFixed(2)}%</td>
+        <td class="t-num">¥${fmtN(Math.round(total.spend))}</td>
+        <td class="t-num">${total.conversions?fmtN(total.conversions):'–'}</td>
+        <td class="t-num">${total.cpa?'¥'+fmtN(Math.round(total.cpa)):'–'}</td>
+        <td class="t-num">¥${Math.round(total.cpc)}</td>
+        <td class="t-num">¥${Math.round(total.cpm)}</td>
+        <td class="t-num">${fmtN(total.reach)}</td>
+      </tr>`;
+
+    document.getElementById('detail-tbody').innerHTML = dataRows + totalRow;
+  }
+}
+
+function buildDailyTable() {
+  const filtered = filteredRows();
+  const dates = sortedUniq(filtered.map(r=>r.date).filter(Boolean));
+  const rows = dates.map(d => ({ date:d, ...agg(filtered.filter(r=>r.date===d)) }));
+  const total = agg(filtered);
+
+  const dataRows = rows.map(r => `
+    <tr>
+      <td class="t-name">${r.date}</td>
+      <td class="t-num">${fmtN(r.impressions)}</td>
+      <td class="t-num">${fmtN(r.clicks)}</td>
+      <td class="t-num">${r.ctr.toFixed(2)}%</td>
+      <td class="t-num">¥${fmtN(Math.round(r.spend))}</td>
+      <td class="t-num">${r.conversions ? fmtN(r.conversions) : '–'}</td>
+      <td class="t-num">${r.cpa ? '¥'+fmtN(Math.round(r.cpa)) : '–'}</td>
+      <td class="t-num">¥${Math.round(r.cpc)}</td>
+      <td class="t-num">¥${Math.round(r.cpm)}</td>
+      <td class="t-num">${fmtN(r.reach)}</td>
+    </tr>`).join('');
+
+  const totalRow = `
+    <tr class="total-row">
+      <td class="t-name">合計 (${dates.length}日間)</td>
+      <td class="t-num">${fmtN(total.impressions)}</td>
+      <td class="t-num">${fmtN(total.clicks)}</td>
+      <td class="t-num">${total.ctr.toFixed(2)}%</td>
+      <td class="t-num">¥${fmtN(Math.round(total.spend))}</td>
+      <td class="t-num">${total.conversions ? fmtN(total.conversions) : '–'}</td>
+      <td class="t-num">${total.cpa ? '¥'+fmtN(Math.round(total.cpa)) : '–'}</td>
+      <td class="t-num">¥${Math.round(total.cpc)}</td>
+      <td class="t-num">¥${Math.round(total.cpm)}</td>
+      <td class="t-num">${fmtN(total.reach)}</td>
+    </tr>`;
+
+  document.getElementById('daily-tbody').innerHTML = dataRows + totalRow;
+}
+
+// ─── HELPERS ──────────────────────────────
+function filteredRows() {
+  if (dataMode === 'platform') {
+    return allRows.filter(r => activeCamps.has(r.campaign) && activePlats.has(r.platform));
+  } else {
+    return allRows.filter(r =>
+      activeCamps.has(r.campaign) &&
+      (!r.age    || activeAges.has(r.age)) &&
+      (!r.gender || activeGenders.has(r.gender))
+    );
+  }
+}
+
+function agg(rows) {
+  const imp    = rows.reduce((s,r)=>s+r.impressions,0);
+  const clicks = rows.reduce((s,r)=>s+r.clicks,0);
+  const spend  = rows.reduce((s,r)=>s+r.spend,0);
+  const reach  = rows.reduce((s,r)=>s+r.reach,0);
+  const conv   = rows.reduce((s,r)=>s+(r.conversions||0),0);
+  return {
+    impressions: imp, clicks, spend, reach, conversions: conv,
+    ctr: imp    ? clicks/imp*100    : 0,
+    cpc: clicks ? spend/clicks      : 0,
+    cpm: imp    ? spend/imp*1000    : 0,
+    cpa: conv   ? spend/conv        : 0,
+    cvr: clicks ? conv/clicks*100   : 0,  // CV率 = CV数 ÷ クリック数
+  };
+}
+
+function fmtN(n) { return Number(n).toLocaleString('ja-JP'); }
+function fmtMetric(v, m) {
+  if (['ctr','cvr'].includes(m)) return (+v).toFixed(2)+'%';
+  if (['cpc','cpm','spend','cpa'].includes(m)) return '¥'+Math.round(+v).toLocaleString('ja-JP');
+  return Math.round(+v).toLocaleString('ja-JP');
+}
+function sortedUniq(arr) { return [...new Set(arr)].sort(); }
+function trunc(s, n) { return s.length > n ? s.slice(0,n)+'…' : s; }
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function platLabel(p) {
+  return {facebook:'Facebook',instagram:'Instagram',threads:'Threads',audience_network:'Audience Network'}[p] || p;
+}
+function genderLabel(g) {
+  return {male:'男性',female:'女性',unknown:'不明',male_all:'男性',female_all:'女性'}[g?.toLowerCase()] || g || '–';
+}
+function destroyChart(key) {
+  if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+}
+
+function baseOpts({ tooltip_cb, y_cb } = {}) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode:'index', intersect:false },
+    plugins: {
+      legend: { labels:{ color:'#9999b8', font:{family:'DM Sans',size:12}, boxWidth:12 } },
+      tooltip: {
+        backgroundColor:'#12121a', borderColor:'#2a2a3e', borderWidth:1,
+        titleColor:'#e8e8f0', bodyColor:'#9999b8',
+        titleFont:{ family:'DM Sans', size:13 },
+        bodyFont:{ family:'DM Mono', size:12 },
+        callbacks: tooltip_cb ? { label: tooltip_cb } : {}
+      }
+    },
+    scales: {
+      x: { ticks:{color:'#6b6b8a',font:{family:'DM Sans',size:11}}, grid:{color:'#1a1a26'} },
+      y: { ticks:{color:'#6b6b8a',font:{family:'DM Mono',size:11}, callback: y_cb || (v=>v)}, grid:{color:'#1a1a26'} }
+    }
+  };
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = '⚠️ '+msg; el.style.display = 'block';
+}
+function hideError() { document.getElementById('error-banner').style.display = 'none'; }
+
+// ─── SAMPLE ───────────────────────────────
+function loadSample() {
+  // ボタンを押すたびにプラットフォーム↔デモを切り替え
+  const useDemoMode = !window._sampleDemoMode;
+  window._sampleDemoMode = useDemoMode;
+
+  const camps = ['OPEN HUB_Audience_リンクアド','OPEN HUB_Audience_リードアド'];
+  const rows = [];
+
+  if (!useDemoMode) {
+    // プラットフォームモード
+    const plats = ['facebook','instagram','threads','audience_network'];
+    for (let d=15; d>=0; d--) {
+      const dt = new Date(); dt.setDate(dt.getDate()-d);
+      const date = dt.toISOString().slice(0,10);
+      camps.forEach(camp => plats.forEach(plat => {
+        const base = {facebook:4000,instagram:2200,threads:700,audience_network:350}[plat]||500;
+        const imp    = Math.round(base*(0.7+Math.random()*0.8));
+        const clicks = Math.round(imp*(0.01+Math.random()*0.04));
+        const spend  = Math.round(clicks*(60+Math.random()*140));
+        const conv   = plat==='facebook' ? Math.round(clicks*(0.05+Math.random()*0.15)) : 0;
+        rows.push({ date, campaign:camp, adset:camp, platform:plat, age:'', gender:'',
+          impressions:imp, clicks, spend, reach:Math.round(imp*0.75), conversions:conv,
+          ctr:imp?clicks/imp*100:0, cpc:clicks?spend/clicks:0, cpm:imp?spend/imp*1000:0, cpa:conv?spend/conv:0 });
+      }));
+    }
+  } else {
+    // 年代・性別モード
+    const ages    = ['18-24','25-34','35-44','45-54','55-64'];
+    const genders = ['male','female','unknown'];
+    const date = new Date().toISOString().slice(0,10);
+    camps.forEach(camp => {
+      ages.forEach(age => {
+        genders.forEach(gender => {
+          const base = age==='25-34'?3000:age==='35-44'?2500:1200;
+          const gMult = gender==='female'?1.2:gender==='male'?1.0:0.3;
+          const imp    = Math.round(base*gMult*(0.7+Math.random()*0.6));
+          const clicks = Math.round(imp*(0.01+Math.random()*0.05));
+          const spend  = Math.round(clicks*(70+Math.random()*130));
+          const conv   = Math.round(clicks*(0.02+Math.random()*0.1));
+          rows.push({ date, campaign:camp, adset:camp, platform:'', age, gender,
+            impressions:imp, clicks, spend, reach:Math.round(imp*0.8), conversions:conv,
+            ctr:imp?clicks/imp*100:0, cpc:clicks?spend/clicks:0, cpm:imp?spend/imp*1000:0, cpa:conv?spend/conv:0 });
+        });
+      });
+    });
+  }
+
+  allRows = rows;
+  hideError();
+  buildDashboard();
+}
+</script>
+</body>
+</html>
